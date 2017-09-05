@@ -1,7 +1,4 @@
-from warnings import warn
-
-
-class Filter(object):
+class AbstractFilter(object):
     """
     A rule to apply to identify desired nodes.
 
@@ -32,35 +29,6 @@ class Filter(object):
     def has_skip_if(self):
         """ bool: Whether this rule has a value for which it should be skipped. """
         return self.skip_if is not None
-
-    def matches(self, node, value):
-        """
-        Returns whether the given node matches the filter rule with the given value.
-
-        Args:
-            node (Element): The node to filter.
-            value (object): The desired value with which the node should be evaluated.
-
-        Returns:
-            bool: Whether the given node matches.
-        """
-
-        if self.skip(value):
-            return True
-
-        if not self._valid_value(value):
-            msg = "Invalid value {value} passed to filter {name} - ".format(
-                value=repr(value),
-                name=self.name)
-
-            if self.default is not None:
-                warn(msg + "defaulting to {}".format(self.default))
-                value = self.default
-            else:
-                warn(msg + "skipping")
-                return True
-
-        return self.func(node, value)
 
     def skip(self, value):
         """

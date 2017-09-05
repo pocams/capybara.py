@@ -48,6 +48,13 @@ with add_filter_set("field") as fs:
     def readonly(node, value):
         return not node.readonly ^ value
 
+    @fs.expression_filter("type")
+    def type(expr, type):
+        if type in ["select", "textarea"]:
+            return expr.axis("self", type)
+        else:
+            return expr[x.attr("type").equals(type)]
+
     @fs.filter("unchecked", boolean=True)
     def unchecked(node, value):
         return node.checked ^ value

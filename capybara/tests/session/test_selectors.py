@@ -41,3 +41,8 @@ class TestFieldSelector(SelectorTestCase):
 
     def test_finds_by_placeholder(self, session):
         assert session.find("field", placeholder="FirstName")["id"] == "form_first_name"
+
+    def test_finds_by_type(self, session):
+        assert session.find("field", "Confusion", type="checkbox")["id"] == "confusion_checkbox"
+        assert session.find("field", "Confusion", type="text")["id"] == "confusion_text"
+        assert session.find("field", "Confusion", type="textarea")["id"] == "confusion_textarea"

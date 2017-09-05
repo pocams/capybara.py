@@ -1,4 +1,5 @@
 from collections import Hashable
+from functools import reduce
 import re
 from xpath.expression import AbstractExpression
 from xpath.renderer import to_xpath
@@ -172,7 +173,9 @@ class SelectorQuery(object):
         exact = exact if exact is not None else self.exact
 
         if isinstance(self.expression, AbstractExpression):
-            return to_xpath(self.expression, exact=exact)
+            expression = self._apply_expression_filters(self.expression)
+
+            return to_xpath(expression, exact=exact)
         else:
             return str_(self.expression)
 
@@ -254,12 +257,12 @@ class SelectorQuery(object):
             if node.visible:
                 return False
 
-        for name, query_filter in iter(self._query_filters.items()):
+        for name, node_filter in iter(self._node_filters.items()):
             if name in self.filter_options:
-                if not query_filter.matches(node, self.filter_options[name]):
+                if not node_filter.matches(node, self.filter_options[name]):
                     return False
-            elif query_filter.has_default:
-                if not query_filter.matches(node, query_filter.default):
+            elif node_filter.has_default:
+                if not node_filter.matches(node, node_filter.default):
                     return False
 
         if self.options["filter"] and not self.options["filter"](node):
@@ -267,6 +270,23 @@ class SelectorQuery(object):
 
         return True
 
+    def _apply_expression_filters(self, expr):
+        def apply_filter(memo, item):
+            name, ef = item
+
+            if name in self.filter_options:
+                return ef.apply_filter(memo, self.filter_options[name])
+            elif ef.has_default:
+                return ef.apply_filter(memo, ef.default)
+            else:
+                return memo
+
+        return reduce(apply_filter, iter(self._expression_filters.items()), expr)
+
     @property
-    def _query_filters(self):
-        return self.selector.custom_filters
+    def _expression_filters(self):
+        return self.selector.expression_filters
+
+    @property
+    def _node_filters(self):
+        return self.selector.node_filters
