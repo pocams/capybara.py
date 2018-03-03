@@ -214,6 +214,10 @@ class Driver(Base):
     def _firefox(self):
         return self._browser_name in ["ff", "firefox"]
 
+    @property
+    def _firefox_version(self):
+        return self.browser.capabilities['browserVersion']
+
     def _find_css(self, css):
         return [Node(self, element) for element in self.browser.find_elements_by_css_selector(css)]
 

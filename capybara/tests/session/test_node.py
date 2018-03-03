@@ -252,7 +252,7 @@ class TestNodeClick(NodeTestCase):
 @pytest.mark.requires("js")
 class TestNodeDoubleClick(NodeTestCase):
     def test_double_clicks_an_element(self, session):
-        if ismarionette(session):
+        if ismarionette(session, "< 59"):
             pytest.skip("selenium/geckodriver doesn't support double-click")
 
         session.visit("/with_js")

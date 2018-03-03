@@ -1,5 +1,6 @@
 import json
 from lxml import etree
+from packaging.specifiers import SpecifierSet
 from werkzeug.datastructures import ImmutableMultiDict
 
 
@@ -18,8 +19,19 @@ def extract_results(session):
     return ImmutableMultiDict(json.loads(inner_html(element)))
 
 
-def ismarionette(session):
-    return getattr(session.driver, "_marionette", False)
+def isversion(actual, expected):
+    if expected is None:
+        return True
+    if actual is None:
+        return False
+
+    return actual in SpecifierSet(expected)
+
+
+def ismarionette(session, version=None):
+    return (
+        getattr(session.driver, "_marionette", False) and
+        isversion(getattr(session.driver, "_firefox_version", None), browser))
 
 
 def isselenium(session):
