@@ -1,4 +1,4 @@
-from contextlib import contextmanager
+from functools import wraps
 import signal
 from socket import socket
 from threading import Lock
@@ -238,7 +238,6 @@ class TimeoutError(Exception):
     pass
 
 
-@contextmanager
 def timeout(seconds):
     """
     Raises an exception if the wrapped code fails to return within the given number of seconds.
@@ -250,6 +249,16 @@ def timeout(seconds):
         TimeoutError: The wrapped code failed to return within the given timeout.
     """
 
+    def decorator(fn):
+        @wraps(fn)
+        def wrapper(*args, **kwargs):
+            return _call_with_timeout(seconds, fn, *args, **kwargs)
+
+        return wrapper
+
+    return decorator
+
+def _call_with_timeout(seconds, fn, *args, **kwargs):
     def handler(signum, frame):
         raise TimeoutError()
 
@@ -275,7 +284,7 @@ def timeout(seconds):
             old_seconds = 0
 
         try:
-            yield
+            return fn(*args, **kwargs)
         finally:
             if handler:
                 signal.alarm(0)
