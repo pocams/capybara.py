@@ -1,10 +1,9 @@
-from functools import wraps
-import signal
 from socket import socket
-from threading import Lock
-from time import time
+from threading import Event, Lock, Thread
+from time import sleep
 
 from capybara.compat import (
+    _thread,
     ParseResult,
     bytes_,
     parse_qsl,
@@ -238,7 +237,7 @@ class TimeoutError(Exception):
     pass
 
 
-def timeout(seconds):
+class timeout(object):
     """
     Raises an exception if the wrapped code fails to return within the given number of seconds.
 
@@ -249,51 +248,28 @@ def timeout(seconds):
         TimeoutError: The wrapped code failed to return within the given timeout.
     """
 
-    def decorator(fn):
-        @wraps(fn)
-        def wrapper(*args, **kwargs):
-            return _call_with_timeout(seconds, fn, *args, **kwargs)
+    def __init__(self, seconds):
+        self._seconds = seconds
 
-        return wrapper
+        self._thread = Thread(target=self._run)
+        self._thread.daemon = True
 
-    return decorator
+        self._canceled = Event()
+        self._timed_out = Event()
 
-def _call_with_timeout(seconds, fn, *args, **kwargs):
-    def handler(signum, frame):
-        raise TimeoutError()
+    def __enter__(self):
+        self._thread.start()
 
-    old_seconds, start_time = 0, 0
-    old_handler = signal.signal(signal.SIGALRM, handler)
-    try:
-        start_time = time()
-        old_seconds = signal.alarm(seconds)
+    def __exit__(self, *exc_info):
+        self._canceled.set()
 
-        if 0 < old_seconds < seconds:
-            # Someone else cares about a shorter timeout, so restore it.
-            handler = None
+        if exc_info[0] == KeyboardInterrupt:
+            if self._timed_out.is_set():
+                raise TimeoutError()
 
-            # Give ourselves a moment to restore before re-activating the alarm.
-            signal.alarm(0)
+    def _run(self):
+        sleep(self._seconds)
 
-            # Restore the original handler.
-            signal.signal(signal.SIGALRM, old_handler)
-            old_handler = None
-
-            # Restore the original alarm.
-            signal.alarm(old_seconds)
-            old_seconds = 0
-
-        try:
-            return fn(*args, **kwargs)
-        finally:
-            if handler:
-                signal.alarm(0)
-    finally:
-        # If another handler was registered, restore it.
-        if old_handler:
-            signal.signal(signal.SIGALRM, old_handler)
-
-        # If another alarm was already scheduled, restore it.
-        if old_seconds:
-            elapsed = time() - start_time
-            signal.alarm(old_seconds - elapsed)
+        if not self._canceled.is_set():
+            self._timed_out.set()
+            _thread.interrupt_main()

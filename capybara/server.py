@@ -60,13 +60,10 @@ class Server(object):
         return Middleware(self.app)
 
     def wait_for_pending_requests(self):
-        @timeout(60)
-        def wait_for_pending_requests():
-            while self.has_pending_requests:
-                sleep(0.01)
-
         try:
-            wait_for_pending_requests()
+            with timeout(60):
+                while self.has_pending_requests:
+                    sleep(0.01)
         except TimeoutError:
             raise TimeoutError("Requests did not finish in 60 seconds")
 
@@ -94,12 +91,9 @@ class Server(object):
             self.server_thread.start()
 
             # Make sure the server actually starts and becomes responsive.
-            @timeout(60)
-            def wait_until_responsive():
+            with timeout(60):
                 while not self.responsive:
                     self.server_thread.join(0.1)
-
-            wait_until_responsive()
 
         return self
 
